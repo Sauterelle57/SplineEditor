@@ -14,29 +14,22 @@
 
 igl::opengl::glfw::Viewer viewer;
 
-int dimension = 4;
+int dimension = 8;
 
 Eigen::MatrixXd control_points(dimension*dimension, 3);
 
 void create_points()
 {
-    control_points <<
-    0, 0, 0,
-    1, 0, 0,
-    2, 0, 0,
-    3, 0, 0,
-    0, 1, 0,
-    1, 1, 1,
-    2, 1, 1,
-    3, 1, 0,
-    0, 2, 0,
-    1, 2, 1,
-    2, 2, 1,
-    3, 2, 0,
-    0, 3, 0,
-    1, 3, 0,
-    2, 3, 0,
-    3, 3, 0;
+    control_points.resize(dimension * dimension, 3);
+
+    for (int i = 0; i < dimension; ++i) {
+        for (int j = 0; j < dimension; ++j) {
+            int index = i * dimension + j;
+            float x = (float)j / (dimension - 1);
+            float y = (float)i / (dimension - 1);
+            control_points.row(index) << x, y, 0; // Génération en grille régulière
+        }
+    }
 }
 
 int selected_point = -1;
@@ -45,9 +38,10 @@ int selected_point = -1;
 void create_lattice()
 {
     static int grid_layer = viewer.append_mesh();
+    if (grid_layer == -1) grid_layer = viewer.append_mesh();
     viewer.data(grid_layer).clear();
     viewer.data(grid_layer).set_points(control_points, Eigen::RowVector3d(1, 0, 0));
-    viewer.data(grid_layer).point_size = 10;
+    viewer.data(grid_layer).point_size = 6;
 
     for (int i = 0; i < dimension; ++i) {
         for (int j = 0; j < dimension-1; ++j) {
@@ -68,33 +62,29 @@ void create_lattice()
 void show_selected_point()
 {
     static int selected_point_layer = -1;
+    if (selected_point_layer == -1) selected_point_layer = viewer.append_mesh();
     viewer.data(selected_point_layer).clear();
-    selected_point_layer = viewer.append_mesh();
+    // selected_point_layer = viewer.append_mesh();
     if (selected_point != -1) {
-        viewer.data(selected_point_layer).clear();
         viewer.data(selected_point_layer).set_points(control_points.row(selected_point), Eigen::RowVector3d(1, 1, 0));
-        viewer.data(selected_point_layer).point_size = 13;
+        viewer.data(selected_point_layer).point_size = 10;
     }
 }
 
 double N(int i, int k, double u, const Eigen::VectorXd &knots)
 {
     if (k == 1)
-    {
         return (knots(i) <= u && u < knots(i + 1)) ? 1.0 : 0.0;
-    }
-    else
-    {
-        double coef1 = 0.0, coef2 = 0.0;
 
-        if (knots(i + k - 1) != knots(i)) // Vérifie la division par 0
-            coef1 = (u - knots(i)) / (knots(i + k - 1) - knots(i)) * N(i, k - 1, u, knots);
+    double coef1 = 0.0, coef2 = 0.0;
 
-        if (knots(i + k) != knots(i + 1)) // Vérifie la division par 0
-            coef2 = (knots(i + k) - u) / (knots(i + k) - knots(i + 1)) * N(i + 1, k - 1, u, knots);
+    if (knots(i + k - 1) != knots(i)) // Vérifie la division par 0
+        coef1 = (u - knots(i)) / (knots(i + k - 1) - knots(i)) * N(i, k - 1, u, knots);
 
-        return coef1 + coef2;
-    }
+    if (knots(i + k) != knots(i + 1)) // Vérifie la division par 0
+        coef2 = (knots(i + k) - u) / (knots(i + k) - knots(i + 1)) * N(i + 1, k - 1, u, knots);
+
+    return coef1 + coef2;
 }
 
 Eigen::VectorXd generate_knots(int num_ctrl_pts, int degree)
@@ -103,16 +93,14 @@ Eigen::VectorXd generate_knots(int num_ctrl_pts, int degree)
     Eigen::VectorXd knots(num_knots);
 
     // Première et dernière valeur répétée `degree + 1` fois
-    for (int i = 0; i <= degree; ++i)
-    {
+    for (int i = 0; i <= degree; ++i) {
         knots(i) = 0;
         knots(num_knots - 1 - i) = num_ctrl_pts - degree;
     }
 
     // Remplissage uniforme des nœuds internes
-    for (int i = 1; i < num_ctrl_pts - degree; ++i)
-    {
-        knots(i + degree) = i;
+    for (int i = 1; i < num_ctrl_pts - degree; ++i) {
+        knots(i + degree) = static_cast<double>(i);
     }
 
     return knots;
@@ -120,8 +108,6 @@ Eigen::VectorXd generate_knots(int num_ctrl_pts, int degree)
 
 Eigen::MatrixXd compute_b_spline_surface(const Eigen::MatrixXd &control_points, int num_u, int num_v)
 {
-    // int n = 4; // Nombre de points de contrôle en X
-    // int m = 4; // Nombre de points de contrôle en Y
     int degree = 3; // Degré cubique
 
     // Générer les nœuds correctement
@@ -161,10 +147,8 @@ Eigen::MatrixXi generate_faces(int num_u, int num_v)
     Eigen::MatrixXi F(2 * (num_u - 1) * (num_v - 1), 3);
     int f = 0;
 
-    for (int ui = 0; ui < num_u - 1; ++ui)
-    {
-        for (int vi = 0; vi < num_v - 1; ++vi)
-        {
+    for (int ui = 0; ui < num_u - 1; ++ui) {
+        for (int vi = 0; vi < num_v - 1; ++vi) {
             int idx = ui * num_v + vi;
 
             F.row(f++) << idx, idx + 1, idx + num_v;
@@ -178,6 +162,8 @@ Eigen::MatrixXi generate_faces(int num_u, int num_v)
 void display_b_spline_surface()
 {
     static int surface_layer = viewer.append_mesh();
+    if (surface_layer == -1) surface_layer = viewer.append_mesh();
+
     int num_u = 20;
     int num_v = 20;
 
@@ -187,7 +173,7 @@ void display_b_spline_surface()
     viewer.data(surface_layer).clear();
     viewer.data(surface_layer).set_mesh(surface, faces);
     viewer.data(surface_layer).set_face_based(true);
-    viewer.data(surface_layer).show_lines = false;
+    // viewer.data(surface_layer).show_lines = false;
     viewer.data(surface_layer).set_colors(Eigen::RowVector3d(0, 0.8, 0));
 }
 
@@ -234,6 +220,7 @@ bool key_down_callback(igl::opengl::glfw::Viewer &viewer, unsigned char key, int
     viewer.data().clear();
     create_lattice();
     show_selected_point();
+    display_b_spline_surface();
 
     return true; // Key handled
 }
