@@ -161,7 +161,7 @@ Eigen::MatrixXi generate_faces(int num_u, int num_v)
 
 void display_b_spline_surface()
 {
-    static int surface_layer = viewer.append_mesh();
+    static int surface_layer = -1;
     if (surface_layer == -1) surface_layer = viewer.append_mesh();
 
     int num_u = 20;
