@@ -2,7 +2,9 @@
 
 ## Project
 
-This project is a C++ application utilizing the [Libigl](https://libigl.github.io/) library to develop a fundamental spline editor.
+SplineEditor is an interactive B-Spline surface editor developed in C++ using [Libigl](https://libigl.github.io/) and [OpenGL](https://www.opengl.org/).
+The application allows dynamic manipulation of a cubic tensor-product B-Spline surface via a control point grid.
+Built as part of the COMP 438 – Geometric Modeling and Processing course at Concordia University Montreal.
 
 ### Hierarchy
 
@@ -90,4 +92,4 @@ Use the following controls to interact with the spline editor:
 
 This project was created by [Marie Giacomel](https://www.linkedin.com/in/marie-giacomel/).
 
-Thank you for reading! Enjoy using the SplineEditor!
+Thank you for reading! Enjoy the SplineEditor!
